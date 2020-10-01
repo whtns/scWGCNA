@@ -10,7 +10,7 @@
 #'
 #' @import patchwork
 #' @importFrom ggplot2 labs xlab ylab theme aes
-#' @importFrom seuratBubblePlot bubbleplot
+#' @importFrom SeuratBubblePlot bubbleplot
 #' @importFrom gridExtra grid.arrange
 #' @importFrom purrr reduce
 #'
@@ -18,13 +18,13 @@
 #' @export
 #'
 #' @examples
-plotModules <- function(object, modules, ...) {
+plotModules <- function(object, modules, combine = TRUE, ...) {
   modplots <- lapply(
     (1:length(modules)),
     function(x) {
       bp <- bubbleplot(
         object = object,
-        genes.plot = modules[[x]],
+        features_plot = modules[[x]],
         do.return = TRUE,
         ...
       ) +
@@ -35,5 +35,9 @@ plotModules <- function(object, modules, ...) {
     }
   )
 
-  reduce(modplots, `+`)
+  if (combine){
+    patchwork::wrap_plots(modplots)
+  } else {
+    modplots
+  }
 }

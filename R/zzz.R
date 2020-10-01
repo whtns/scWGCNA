@@ -1,3 +1,3 @@
 options(stringsAsFactors = FALSE)
-allowWGCNAThreads()
+WGCNA::enableWGCNAThreads()
 utils::globalVariables(c("Power","slope","SFT.R.sq","mean.k"))

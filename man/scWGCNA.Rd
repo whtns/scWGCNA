@@ -4,9 +4,16 @@
 \alias{scWGCNA}
 \title{scWGCNA}
 \usage{
-scWGCNA(object, min.module.size = 50, minFraction = 0.25,
-  filter_mito_ribo_genes = FALSE, assay_use = NULL, slot_use = NULL,
-  merge_similar_modules = FALSE, merge_similarity_threshold = 0.25)
+scWGCNA(
+  object,
+  min.module.size = 50,
+  minFraction = 0.25,
+  filter_mito_ribo_genes = FALSE,
+  assay_use = NULL,
+  slot_use = NULL,
+  merge_similar_modules = FALSE,
+  merge_similarity_threshold = 0.25
+)
 }
 \arguments{
 \item{object}{Processed scRNAseq object}
@@ -31,6 +38,9 @@ use data stored in the obj@assay slot}
 
 \item{merge_similarity_threshold}{Dissimilarity (i.e., 1-correlation) cutoff
 used to determine if modules should be merged. Default: 0.25}
+}
+\value{
+
 }
 \description{
 Perform Weighted Gene Co-expression Network Analysis on scRNAseq

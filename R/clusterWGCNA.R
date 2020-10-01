@@ -50,17 +50,19 @@ scWGCNA <- function(object,
                     merge_similar_modules = FALSE,
                     merge_similarity_threshold = 0.25) {
 
+  # browser()
+
   object_data <- GatherData(object = object,
                          assay = assay_use,
                          slot_use = slot_use) %>%
     na_if(y = 0) %>%
     t()
 
-  # Testing new screening method.  Maybe more appropriate for scRNA-seq datasets?
-  dr <- DetectionRate(object)
-  dr$min <- rowSums(dr)
-  dr <- dr %>% as.data.frame() %>% rownames_to_column() %>% filter(min > 0) %>% select(-min) %>% column_to_rownames()
-  datExpr <- object_data[,rownames(dr)]
+  # # Testing new screening method.  Maybe more appropriate for scRNA-seq datasets?
+  # dr <- SeuratBubblePlot::DetectionRate(object)
+  # dr$min <- rowSums(dr)
+  # dr <- dr %>% as.data.frame() %>% rownames_to_column() %>% filter(min > 0) %>% select(-min) %>% column_to_rownames()
+  # datExpr <- object_data[,rownames(dr)]
 
 
   names(object_data) <- colnames(object_data)
@@ -152,35 +154,13 @@ scWGCNA <- function(object,
                    corFnc = "bicor"
   )
 
-  message(glue("Turning adjacency into topological overlap..."))
-  TOM <- TOMsimilarity(
-    adjMat = adj,
-    TOMType = "signed",
-    verbose = 6,
-    TOMDenom = "mean"
-  )
+    dissTOM <- calculate_tom(adj, datExpr)
 
-  rownames(TOM) <- colnames(TOM) <- SubGeneNames <- colnames(datExpr)
-  dissTOM <- 1 - TOM
+  dandc <- makeDendroandColors(dissTOM, min.module.size)
 
-  message(glue("Hierarchical clustering of the genes based on the
-             TOM dissimilarity measure..."))
-  geneTree <- flashClust(d = as.dist(dissTOM))
 
-  message(glue("Module identification using dynamic tree cut..."))
-  dynamicMods <- cutreeDynamic(
-    dendro = geneTree,
-    method = "hybrid",
-    minClusterSize = min.module.size,
-    distM = dissTOM,
-    deepSplit = 3,
-    pamRespectsDendro = FALSE
-  )
-
-  dynamicColors <- labels2colors(dynamicMods)
-
-  pdc <- plotDendroAndColors(geneTree,
-                             dynamicColors,
+  pdc <- plotDendroAndColors(dandc$geneTree,
+                             labels2colors(dandc$dynamicMods),
                              "Dynamic Tree Cut",
                              dendroLabels = FALSE,
                              hang = 0.03,
@@ -197,14 +177,11 @@ scWGCNA <- function(object,
   # to bring out the module structure
   # tmp <- TOMplot(dissTOM ^ 4, geneTree, as.character(dynamicColors))
 
-  message(glue("Assembling modules"))
-  module_colors <- unique(dynamicColors)
+  dynamicColors <- labels2colors(dandc$dynamicMods)
 
-  modules <- lapply(module_colors, function(x) {
-    SubGeneNames[which(dynamicColors == x)]
-  })
+  modules <- extract_modules(dandc$dynamicMods, datExpr)
 
-  names(modules) <- module_colors
+
 
   message(glue("Calculating module eigengenes..."))
   MEList <- moduleEigengenes(
@@ -257,6 +234,81 @@ scWGCNA <- function(object,
     "modules" = modules,
     "moduleEigengenes" = MEs,
     "adjacency.matrix" = adj,
-    "exprMatrix" = datExpr
+    "exprMatrix" = datExpr,
+    plots = list(topology.fit.index, mean.connect, pdc)
   ))
+}
+
+#' Make Dendrogram and Colors
+#'
+#' @param dissTOM
+#' @param min.module.size
+#'
+#' @return
+#' @export
+#'
+#' @examples
+makeDendroandColors <- function(dissTOM, min.module.size) {
+  message(glue("Hierarchical clustering of the genes based on the
+               TOM dissimilarity measure..."))
+  geneTree <- flashClust(d = as.dist(dissTOM))
+
+  message(glue("Module identification using dynamic tree cut..."))
+  dynamicMods <- cutreeDynamic(
+    dendro = geneTree,
+    method = "hybrid",
+    minClusterSize = min.module.size,
+    distM = dissTOM,
+    deepSplit = 3,
+    pamRespectsDendro = FALSE
+  )
+
+  return(list(geneTree = geneTree, dynamicMods = dynamicMods))
+}
+
+#' Calculate TOM
+#'
+#' @param adj
+#' @param datExpr
+#'
+#' @return
+#' @export
+#'
+#' @examples
+calculate_tom <- function(adj, datExpr) {
+  message(glue("Turning adjacency into topological overlap..."))
+  TOM <- TOMsimilarity(
+    adjMat = adj,
+    TOMType = "signed",
+    verbose = 6,
+    TOMDenom = "mean"
+  )
+
+  rownames(TOM) <- colnames(TOM) <- SubGeneNames <- colnames(datExpr)
+  dissTOM <- 1 - TOM
+}
+
+
+#' extract modules
+#'
+#' @param dynamicMods
+#' @param datExpr
+#'
+#' @return
+#' @export
+#'
+#' @examples
+extract_modules <- function(dynamicMods, datExpr) {
+
+  dynamicColors <- labels2colors(dynamicMods)
+
+  message(glue("Assembling modules"))
+  module_colors <- unique(dynamicColors)
+
+  modules <- lapply(module_colors, function(x) {
+    colnames(datExpr)[which(dynamicColors == x)]
+  })
+
+  names(modules) <- module_colors
+  return(modules)
 }

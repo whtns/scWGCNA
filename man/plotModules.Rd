@@ -4,7 +4,7 @@
 \alias{plotModules}
 \title{plotModules}
 \usage{
-plotModules(object, modules, ...)
+plotModules(object, modules, combine = TRUE, ...)
 }
 \arguments{
 \item{object}{scRNA-seq data object}
